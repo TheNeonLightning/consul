@@ -92,6 +92,42 @@ func TestAPI_AgentHost(t *testing.T) {
 	})
 }
 
+type RaftConf struct {
+	HeartbeatTimeout    time.Duration
+	ElectionTimeout     time.Duration
+	ElectionPolicy      uint32
+	OppositionPolicy    uint32
+	OppositionThreshold uint64
+	BackoffDurSecs      uint64
+}
+
+func getRaftConf(confFile string) *RaftConf {
+	var raftConf RaftConf
+	raftConfFile, err := os.ReadFile(confFile)
+	if err != nil {
+		fmt.Print(err)
+		return nil
+	}
+	err = json.Unmarshal(raftConfFile, &raftConf)
+	if err != nil {
+		fmt.Print(err)
+		return nil
+	}
+
+	return &raftConf
+}
+
+func Test_GetRaftConf(t *testing.T) {
+	raftConf := getRaftConf("/home/tnl/consul/raft.json")
+
+	fmt.Print(raftConf.HeartbeatTimeout)
+	fmt.Print(raftConf.ElectionTimeout)
+	fmt.Print(raftConf.ElectionPolicy)
+	fmt.Print(raftConf.OppositionPolicy)
+	fmt.Print(raftConf.OppositionThreshold)
+	fmt.Print(raftConf.BackoffDurSecs)
+}
+
 func TestAPI_AgentReload(t *testing.T) {
 	t.Parallel()
 

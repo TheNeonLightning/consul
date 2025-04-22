@@ -1,0 +1,8 @@
+{
+    "HeartbeatTimeout": 1000,
+    "ElectionTimeout": 1000,
+    "ElectionPolicy": 0,
+    "OppositionPolicy": 0,
+    "OppositionThreshold": 1000000,
+    "BackoffDurSecs": 60
+}

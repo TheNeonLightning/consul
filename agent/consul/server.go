@@ -6,6 +6,7 @@ package consul
 import (
 	"context"
 	"crypto/x509"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -1971,6 +1972,31 @@ func (s *Server) GetLANCoordinate() (lib.CoordinateSet, error) {
 	return cs, nil
 }
 
+type RaftConf struct {
+	HeartbeatTimeout    time.Duration
+	ElectionTimeout     time.Duration
+	ElectionPolicy      uint32
+	OppositionPolicy    uint32
+	OppositionThreshold uint64
+	BackoffDurSecs      uint64
+}
+
+func getRaftConf(confFile string) *RaftConf {
+	var raftConf RaftConf
+	raftConfFile, err := os.ReadFile(confFile)
+	if err != nil {
+		fmt.Print(err)
+		return nil
+	}
+	err = json.Unmarshal(raftConfFile, &raftConf)
+	if err != nil {
+		fmt.Print(err)
+		return nil
+	}
+
+	return &raftConf
+}
+
 func (s *Server) agentSegmentName() string {
 	return s.config.Segment
 }
@@ -1980,7 +2006,27 @@ func (s *Server) agentSegmentName() string {
 func (s *Server) ReloadConfig(config ReloadableConfig) error {
 	// Reload raft config first before updating any other state since it could
 	// error if the new config is invalid.
+	raftConf := getRaftConf("/home/consul/raft.json")
+	config.HeartbeatTimeout = raftConf.HeartbeatTimeout
+	config.ElectionTimeout = raftConf.ElectionTimeout
+
 	raftCfg := computeRaftReloadableConfig(config)
+
+	raftCfg.HeartbeatTimeout = raftConf.HeartbeatTimeout
+	raftCfg.ElectionTimeout = raftConf.ElectionTimeout
+	raftCfg.ElectionPolicy = raft.ElectionPolicy(raftConf.ElectionPolicy)
+	raftCfg.OppositionPolicy = raft.OppositionPolicy(raftConf.OppositionPolicy)
+	raftCfg.OppositionThreshold = raftConf.OppositionThreshold
+	raftCfg.BackoffDurSecs = raftConf.BackoffDurSecs
+
+	s.logger.Info("Reconfiguring Raft",
+		"HeartbeatTimeout", raftCfg.HeartbeatTimeout,
+		"ElectionTimeout", raftCfg.ElectionTimeout,
+		"ElectionPolicy", raftCfg.ElectionPolicy,
+		"OppositionPolicy", raftCfg.OppositionPolicy,
+		"OppositionThreshold", raftCfg.OppositionThreshold,
+		"BackoffDurSecs", raftCfg.BackoffDurSecs)
+
 	if err := s.raft.ReloadConfig(raftCfg); err != nil {
 		return err
 	}
